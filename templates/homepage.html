@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+    <div class="container text-center">
+        <h1>Welcome to the Home Page!</h1>
+
+        
+
+        {% if user.is_authenticated %}
+            <p class="message {% if user.is_superuser %}admin{% else %}user{% endif %}">
+                {% if user.is_superuser %}
+                    You are logged in as admin.
+                {% else %}
+                    You are logged in as {{ user.username }}.
+                {% endif %}
+            </p>
+        {% else %}
+            <p class="message not-logged-in">You are not logged in.</p>
+        {% endif %}
+    </div>
+{% endblock %}

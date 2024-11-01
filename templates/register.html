@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Account{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h2 class="text-center">Create Account</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Username</label>
+                {{ form.username.errors }}
+                <input type="text" class="form-control" name="username" value="{{ form.username.value|default_if_none:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                {{ form.email.errors }}
+                <input type="email" class="form-control" name="email" value="{{ form.email.value|default_if_none:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                {{ form.password.errors }}
+                <input type="password" class="form-control" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                {{ form.confirm_password.errors }}
+                <input type="password" class="form-control" name="confirm_password" required>
+            </div>
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                {{ form.full_name.errors }}
+                <input type="text" class="form-control" name="full_name" value="{{ form.full_name.value|default_if_none:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="contact_number">Contact Number</label>
+                {{ form.contact_number.errors }}
+                <input type="text" class="form-control" name="contact_number" value="{{ form.contact_number.value|default_if_none:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="company_name">Company Name</label>
+                {{ form.company_name.errors }}
+                <input type="text" class="form-control" name="company_name" value="{{ form.company_name.value|default_if_none:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="business_title">Business Title</label>
+                {{ form.business_title.errors }}
+                <input type="text" class="form-control" name="business_title" value="{{ form.business_title.value|default_if_none:'' }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Register</button> <!-- Bootstrap primary button class -->
+        </form>
+        <div class="text-center mt-3">
+            <a href="{% url 'login' %}">Already have an account? Login here</a>
+        </div>
+      <div class="text-center mt-3">
+            <a href="{% url 'homepage' %}">Back to Home</a>
+    </div>
+{% endblock %}
