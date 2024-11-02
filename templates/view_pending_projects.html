@@ -46,6 +46,10 @@
                             </p>
                             <p class="card-text">
                                 <strong>Quantity:</strong> {{ project.quantity }}
+                            </p>
+                            <div class="text-center mt-3">
+                                <a href="{% url 'edit_project' project.id %}" class="btn btn-primary">Detailed View</a>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Project{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Edit Project Request</h1>
+    <form method="POST" id="editProjectForm">
+        {% csrf_token %}
+
+        <div>
+            <h3>Select Project Elements</h3>
+            {{ form.project_element }}
+        </div>
+
+        <div>
+            <h3>Select Materials</h3>
+    <ul id="materialList" class="list-unstyled">
+    {% for material in materials_with_details %}
+        <li class="mb-2">
+            <input type="checkbox" id="id_material_{{ material.id }}" name="materials" value="{{ material.id }}"
+                {% if material.id in selected_material_ids %}checked{% endif %} onchange="calculateTotalCost()">
+            <strong>{{ material.name }}</strong>
+            - Price: <input type="number" step="0.01" id="price-{{ material.id }}" name="material_price_{{ material.id }}"
+                value="{{ material.price|floatformat:2 }}" onchange="calculateTotalCost()">
+            - Markup: <input type="number" step="0.01" id="markup-{{ material.id }}" name="material_markup_{{ material.id }}"
+                value="{{ material.markup|floatformat:2 }}" onchange="calculateTotalCost()">%
+        </li>
+    {% endfor %}
+</ul>
+
+
+
+        </div>
+
+        <div>
+            <label for="id_quantity">Quantity:</label>
+            {{ form.quantity }}
+        </div>
+
+        <div>
+            <label for="id_area_size">Area Size:</label>
+            {{ form.area_size }}
+        </div>
+
+        <div>
+            <label for="id_location">Location:</label>
+            {{ form.location }}
+        </div>
+
+        <h3>Total Cost: <span id="totalCost">0.00</span></h3> <!-- Placeholder for total cost -->
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- Include jQuery -->
+
+<script>
+    function calculateTotalCost() {
+        let totalCost = 0;
+        let quantity = parseFloat(document.getElementById('id_quantity').value) || 1; // Default to 1 if quantity is empty
+
+        {% for material in materials_with_details %}
+            const isSelected = document.getElementById('id_material_{{ material.id }}').checked;
+            if (isSelected) {
+                const price = parseFloat(document.getElementById('price-{{ material.id }}').value) || 0;
+                const markup = parseFloat(document.getElementById('markup-{{ material.id }}').value) || 0;
+                totalCost += (price + (price * (markup / 100))) * quantity; // Calculate cost including markup
+            }
+        {% endfor %}
+
+        document.getElementById('totalCost').innerText = totalCost.toFixed(2); // Update total cost display
+    }
+
+    function loadMaterials() {
+        const selectedElements = [];
+        $('input[name="project_element"]:checked').each(function() {
+            selectedElements.push(this.value);
+        });
+
+        if (selectedElements.length > 0) {
+            $.ajax({
+                url: '{% url "load_materials" %}',  // Adjust to your URL for loading materials
+                data: {
+                    'element_ids': selectedElements.join(',')
+                },
+                dataType: 'json',
+                success: function(data) {
+                    $('#materialList').empty(); // Clear existing materials
+                    data.forEach(function(material) {
+                        $('#materialList').append(`
+                            <li class="mb-2">
+                                <input type="checkbox" id="id_material_${material.id}" name="materials" value="${material.id}" onchange="calculateTotalCost()">
+                                <strong>${material.name}</strong>
+                                - Price: <input type="number" step="0.01" id="price-${material.id}" name="material_price_${material.id}" value="${material.price}" onchange="calculateTotalCost()">
+                                - Markup: <input type="number" step="0.01" id="markup-${material.id}" name="material_markup_${material.id}" value="${material.markup}">%
+                            </li>
+                        `);
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error("Failed to load materials:", error);
+                }
+            });
+        } else {
+            $('#materialList').empty(); // Clear materials if no project elements are selected
+        }
+    }
+
+    // Add event listeners to calculate total cost when quantity or materials change
+    document.getElementById('id_quantity').addEventListener('input', calculateTotalCost);
+    $('input[name="project_element"]').change(loadMaterials); // Trigger loading materials on project element change
+
+    {% for material in materials_with_details %}
+        document.getElementById('id_material_{{ material.id }}').addEventListener('change', calculateTotalCost);
+        document.getElementById('price-{{ material.id }}').addEventListener('input', calculateTotalCost);
+        document.getElementById('markup-{{ material.id }}').addEventListener('input', calculateTotalCost);
+    {% endfor %}
+</script>
+{% endblock %}

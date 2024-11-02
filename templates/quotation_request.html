@@ -7,10 +7,10 @@
 <form method="post" id="quotation-form">
     {% csrf_token %}
 
-    <label for="element">Select a Project Element:</label><br>
+    <label for="element">Select Project Elements:</label><br>
     {% for project_element in project_elements %}
         <label>
-            <input type="radio" name="element" value="{{ project_element.id }}" required>
+            <input type="checkbox" name="project_element" value="{{ project_element.id }}">
             {{ project_element.name }}
         </label><br>
     {% endfor %}
@@ -36,72 +36,63 @@
         <input type="text" name="location" id="location" placeholder="Enter location" required>
     </div>
 
-    <div id="price-info" style="display:none;">
-        <p>Price per Material: <span id="material-price">0.00</span></p>
-        <p>Markup %: <span id="material-markup">0.00</span></p> <!-- Added markup display -->
-        <p>Total Cost: <span id="total-cost">0.00</span></p>
-    </div>
-
     <button type="submit">Submit Request</button>
 </form>
+
+{% if errors %}
+    <div class="error-list">
+        <h3>There were some errors:</h3>
+        <ul>
+            {% for field, messages in errors.items %}
+                {% for message in messages %}
+                    <li>{{ field }}: {{ message }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
 
 {% block extra_js %}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
-        $('input[name="element"]').change(function() {
-            var elementId = $(this).val();
-            $.ajax({
-                url: '{% url "load_materials" %}',
-                data: {
-                    'element_id': elementId
-                },
-                dataType: 'json',
-                success: function(data) {
-                    console.log("Materials loaded:", data);  // Log the loaded materials
-                    $('#materials').empty();  // Clear previous materials
-                    if (data.length > 0) {
-                        data.forEach(function(material) {
-                            $('#materials').append(
-                                `<label>
-                                    <input type="radio" name="material" value="${material.id}" class="material-radio" data-price="${material.price}" data-markup="${material.markup}">
-                                    ${material.name} - Price per Quantity: ${parseFloat(material.price).toFixed(2)} (Markup: ${parseFloat(material.markup).toFixed(2)}%)
-                                </label><br>`
-                            );
-                        });
-                        $('#materials-container').show();  // Show materials container
-                    } else {
-                        $('#materials-container').hide();  // Hide if no materials
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX error:", error);
-                }
-            });
-        });
+        $('input[name="project_element"]').change(function() {
+            $('#materials').empty();  // Clear previous materials
+            var selectedElements = $('input[name="project_element"]:checked');
 
-        // Update price info when a material is selected or quantity changes
-        $(document).on('change', 'input[name="material"], #quantity ', function() {
-            var selectedMaterial = $('input[name="material"]:checked');
-            var quantity = $('#quantity').val();
-            if (selectedMaterial.length > 0) {
-                var materialPrice = parseFloat(selectedMaterial.data('price')) || 0; // Get price from data attribute
-                var markupPercentage = parseFloat(selectedMaterial.data('markup')) || 0; // Get markup from data attribute
-
-                console.log("Selected Material Price:", materialPrice);  // Log the selected material's price
-                console.log("Selected Material Markup:", markupPercentage);  // Log the selected material's markup
-
-                var totalCost = (materialPrice * quantity) * (1 + (markupPercentage / 100)); // Adjust total cost with markup
-
-                $('#material-price').text(materialPrice.toFixed(2));
-                $('#material-markup').text(markupPercentage.toFixed(2)); // Show markup percentage
-                $('#total-cost').text(totalCost.toFixed(2)); // Show total cost
-                $('#price-info').show(); // Show the price info section
+            if (selectedElements.length > 0) {
+                // Show the materials container
+                $('#materials-container').show();
+                // Fetch materials for each selected element
+                selectedElements.each(function() {
+                    var elementId = $(this).val();
+                    $.ajax({
+                        url: '{% url "load_materials" %}',
+                        data: {
+                            'element_id': elementId
+                        },
+                        dataType: 'json',
+                        success: function(data) {
+                            console.log("Materials loaded for element " + elementId + ":", data);
+                            if (data.length > 0) {
+                                data.forEach(function(material) {
+                                    $('#materials').append(
+                                        `<label>
+                                            <input type="checkbox" name="materials" value="${material.id}" class="material-checkbox">
+                                            ${material.name}
+                                        </label><br>`
+                                    );
+                                });
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("AJAX error:", error);
+                            alert("Error loading materials. Please try again.");
+                        }
+                    });
+                });
             } else {
-                $('#material-price').text('0.00');
-                $('#material-markup').text('0.00');
-                $('#total-cost').text('0.00');
-                $('#price-info').hide(); // Hide if no material is selected
+                $('#materials-container').hide();  // Hide if no materials
             }
         });
 
@@ -109,10 +100,12 @@
         $('#quotation-form').on('submit', function(event) {
             var areaSize = $('#area_size').val().trim();
             var location = $('#location').val().trim();
+            var selectedElements = $('input[name="project_element"]:checked').length;
+            var selectedMaterials = $('input[name="materials"]:checked').length;
 
-            if (areaSize === "" || location === "") {
+            if (areaSize === "" || location === "" || selectedElements === 0 || selectedMaterials === 0) {
                 event.preventDefault();  // Prevent form submission
-                alert("Please fill in all required fields, including Area Size and Location.");
+                alert("Please fill in all required fields, including Area Size, Location, select at least one Project Element, and one Material.");
             }
         });
     });

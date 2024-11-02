@@ -15,5 +15,7 @@ urlpatterns = [
     path('delete-quotation/<int:request_id>/', views.delete_quotation_request, name='delete_quotation'),
     path('delete_element/<int:pk>/', views.DeleteElementView.as_view(), name='delete_element'),
     path('delete_material/<int:pk>/', views.DeleteMaterialView.as_view(), name='delete_material'),
+    path('edit_project/<int:project_id>/', views.edit_project, name='edit_project'),
+    path('', views.homepage, name='homepage'),  # Home page URL
 
 ]

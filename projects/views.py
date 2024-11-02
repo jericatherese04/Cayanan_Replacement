@@ -10,7 +10,76 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 
+
 import json
+
+# views.py
+
+@login_required
+def edit_project(request, project_id):
+    # Fetch the project or return a 404 if not found
+    project = get_object_or_404(QuotationRequest, id=project_id)
+
+    if request.method == 'POST':
+        # Bind form data to the instance of the project
+        form = QuotationRequestForm(request.POST, instance=project)
+
+        if form.is_valid():
+            # Save the updated project information
+            form.save()
+
+            # Clear existing materials to avoid duplicates
+            project.material.clear()
+
+            # Fetch selected materials correctly
+            selected_material_ids = request.POST.getlist('materials')
+
+            # Add each selected material to the project
+            for material_id in selected_material_ids:
+                try:
+                    material = Material.objects.get(id=material_id)
+
+                    # Construct keys to fetch price and markup from the form data
+                    price_key = f'material_price_{material_id}'
+                    markup_key = f'material_markup_{material_id}'
+
+                    # Get the new price and markup; default to the existing ones if not provided
+                    new_price = float(request.POST.get(price_key, material.price))
+                    new_markup = float(request.POST.get(markup_key, material.markup))
+
+                    # Update the material object with new values
+                    material.price = new_price
+                    material.markup = new_markup
+                    material.save()
+
+                    # Add the material to the project
+                    project.material.add(material)  # Correctly associate the material with the project
+
+                except Material.DoesNotExist:
+                    # Handle the case where the material does not exist
+                    continue  # Optionally log this or handle it differently
+
+            # Redirect to a success page after saving changes
+            return redirect('homepage')
+
+    else:
+        # If not a POST request, bind the existing project data to the form
+        form = QuotationRequestForm(instance=project)
+
+    # Fetch all materials to display in the form
+    materials_with_details = Material.objects.all()
+
+    # Access the related materials using the correct attribute
+    selected_material_ids = project.material.values_list('id', flat=True)  # Get selected material IDs
+
+    # Pass the form and materials to the context for rendering
+    context = {
+        'form': form,
+        'materials_with_details': materials_with_details,
+        'selected_material_ids': selected_material_ids,  # Pass selected material IDs for the template
+    }
+    return render(request, 'edit_project.html', context)
+
 
 logger = logging.getLogger(__name__)
 class DeleteElementView(View):
@@ -82,7 +151,9 @@ def update_prices(request):
 
             return JsonResponse({'success': True, 'message': 'Prices and markups updated successfully.'})
         except json.JSONDecodeError:
-            return JsonResponse({'success': False, 'error': 'Invalid JSON.'}, status=400)
+            return JsonResponse({'success': False, 'error': 'Invalid JSON format.'}, status=400)
+        except Material.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'One or more materials not found.'}, status=404)
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
@@ -117,54 +188,66 @@ def add_material(request):
     return render(request, 'add_material.html', {'form': form})
 
 
-
 @login_required
 def list_of_my_quotes(request):
-    user_quotes = QuotationRequest.objects.filter(user=request.user)
+    user_quotes = QuotationRequest.objects.filter(user=request.user).prefetch_related('project_element', 'material')
 
-    # Add total cost calculation dynamically
+    # Initialize total costs for each quote
     for quote in user_quotes:
-        if quote.material:
-            quote.total_cost = quote.material.price * quote.quantity * (1 + (quote.material.markup / 100))  # Include markup in total cost
-        else:
-            quote.total_cost = 0  # Handle case where material is None
+        total_cost = 0  # Reset total cost for each quote
+        materials_with_details = []  # List to hold material details for this quote
+
+        for material in quote.material.all():  # Loop through each material for the quote
+            material_cost = material.price * quote.quantity * (1 + (material.markup / 100))  # Calculate material cost with markup
+            total_cost += material_cost  # Add to total cost
+
+            # Store material details including name, price, and markup
+            materials_with_details.append({
+                'name': material.name,
+                'price': material.price,
+                'markup': material.markup,
+                'material_cost': material_cost,  # Add the computed cost for individual material
+            })
+
+        quote.total_cost = total_cost  # Store the computed total cost for the quote
+        quote.material_details = materials_with_details  # Attach material details to the quote
 
     return render(request, 'homepage.html', {'user_quotes': user_quotes})
 
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def quotation_request(request):
     if request.method == 'POST':
-        form = QuotationRequestForm(request.POST)
-        if form.is_valid():
-            element = form.cleaned_data['element']
-            material = form.cleaned_data['material'] if 'material' in form.cleaned_data else None
-            quantity = form.cleaned_data['quantity']
-            area_size = form.cleaned_data['area_size']
-            location = form.cleaned_data['location']
+        selected_elements = request.POST.getlist('project_element')
+        selected_materials = request.POST.getlist('materials')
+        quantity = request.POST.get('quantity')
+        area_size = request.POST.get('area_size')
+        location = request.POST.get('location')
+        user = request.user  # Assuming the user is logged in
 
-            QuotationRequest.objects.create(
-                user=request.user,
-                project_element=element,
-                material=material,
-                quantity=quantity,
-                area_size=area_size,
-                location=location,
-                status="Pending"
-            )
-            return redirect('quotation_success')
-    else:
-        form = QuotationRequestForm()
+        # Create the QuotationRequest instance
+        quotation_request = QuotationRequest.objects.create(
+            user=user,
+            quantity=quantity,
+            area_size=area_size,
+            location=location
+        )
+        # Add selected project elements and materials
+        quotation_request.project_element.add(*selected_elements)
+        if selected_materials:
+            quotation_request.material.add(*selected_materials)
 
-    elements = ProjectElement.objects.prefetch_related('materials').all()  # This fetches all project elements
+        return redirect('quotation_success')  # Redirect to a success page or appropriate response
 
-    return render(request, 'quotation_request.html', {
-        'form': form,
-        'project_elements': elements  # Ensure this is passed to the template
-    })
-
+    # Fetch project elements for rendering the form
+    project_elements = ProjectElement.objects.all()
+    return render(request, 'quotation_request.html', {'project_elements': project_elements})
 
 def load_materials(request):
     element_id = request.GET.get('element_id')
@@ -173,3 +256,16 @@ def load_materials(request):
 
 def quotation_success(request):
     return render(request, 'quotation_success.html')
+
+
+@login_required
+def homepage(request):
+    user_quotes = QuotationRequest.objects.filter(user=request.user).prefetch_related('project_element', 'material')
+    # Debugging output
+    print("User Quotes:", user_quotes)
+    for quote in user_quotes:
+        print("Quote ID:", quote.id, "Materials:", quote.material.all())
+
+    return render(request, 'homepage.html', {
+        'user_quotes': user_quotes
+    })
