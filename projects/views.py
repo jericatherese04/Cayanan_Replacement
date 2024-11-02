@@ -12,7 +12,23 @@ from django.views import View
 from django.http import HttpResponseForbidden
 import json
 
+@login_required
+def view_complete_projects(request):
+    # Fetch all quotations that are marked as "Complete" for the authenticated user
+    completed_quotes = QuotationRequest.objects.filter(status="Complete", user=request.user)
 
+    return render(request, 'view_complete_project.html', {'completed_quotes': completed_quotes})
+@login_required
+def complete_quotation(request, quotation_id):
+    # Fetch the quotation object
+    quotation = get_object_or_404(QuotationRequest, id=quotation_id, user=request.user)
+
+    # Update the status to "Complete"
+    quotation.status = "Complete"
+    quotation.save()
+
+    # Redirect to the page showing approved quotations (or any other page you prefer)
+    return redirect('view_approved_project')  # Make sure to use the correct URL name
 @login_required
 def approved_quotations(request):
     # Fetch all quotations approved by the admin

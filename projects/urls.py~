@@ -24,7 +24,7 @@ urlpatterns = [
     path('view-declined-projects/', views.declined_projects, name='view_declined_project'),
     path('approved-quotations/', views.approved_quotations, name='view_approved_project'),
     path('complete-quotation/<int:quotation_id>/', views.complete_quotation, name='complete_quotation'),
-    path('completed-projects/', views.view_complete_projects, name='view_complete_project'),
+    path('completed-projects/', views.view_complete_projects, name='view_complete_projects'),
     # New URL for completed projects
 
 ]
