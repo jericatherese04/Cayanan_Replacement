@@ -26,14 +26,8 @@
                             <h5 class="mb-0">{{ project.user.username }}</h5>
                         </div>
                         <div class="card-body">
-                            <h6 class="card-title">{{ project.project_element.name }}</h6>
                             <p class="card-text">
-                                <strong>Material:</strong>
-                                {% if project.material %}
-                                    {{ project.material.name }}
-                                {% else %}
-                                    <em>N/A</em>
-                                {% endif %}
+
                             </p>
                             <p class="card-text">
                                 <strong>Location:</strong> {{ project.location }}

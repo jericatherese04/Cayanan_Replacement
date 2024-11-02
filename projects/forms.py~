@@ -13,7 +13,7 @@ class QuotationRequestForm(forms.ModelForm):
 class ProjectElementForm(forms.ModelForm):
     class Meta:
         model = ProjectElement
-        fields = ['name']
+        fields = ['name', 'price']
 
 class MaterialForm(forms.ModelForm):
     class Meta:
