@@ -9,9 +9,9 @@ class QuotationRequestForm(forms.Form):
 class ProjectElementForm(forms.ModelForm):
     class Meta:
         model = ProjectElement
-        fields = ['name']
+        fields = ['name', 'price']
 
 class MaterialForm(forms.ModelForm):
     class Meta:
         model = Material
-        fields = ['name', 'project_element' ]
+        fields = ['name', 'project_element', 'price']

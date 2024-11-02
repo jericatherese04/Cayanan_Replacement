@@ -26,8 +26,6 @@ class QuotationRequest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, default="Pending")  # Status field
-    quantity = models.PositiveIntegerField(default=1)  # Quantity field
 
     def __str__(self):
         return f"Request by {self.user} for {self.project_element}"
-

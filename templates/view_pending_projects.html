@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Pending Projects{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Pending Project Quotations</h1>
+
+    {% if pending_projects %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Project Element</th>
+                    <th>Material</th>
+                    <th>Requested On</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in pending_projects %}
+                <tr>
+                    <td>{{ project.user.username }}</td>
+                    <td>{{ project.project_element.name }}</td>
+                    <td>
+                        {% if project.material %}
+                            {{ project.material.name }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>{{ project.created_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No pending projects available.</p>
+    {% endif %}
+</div>
+{% endblock %}

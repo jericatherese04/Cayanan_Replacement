@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}My Quotes{% endblock %}
 
 {% block content %}
 <div class="container text-center">
-    <h1>Welcome to the Home Page!</h1>
+    <h1>My Requested Quotations</h1>
 
     {% if user.is_authenticated %}
         <p class="message {% if user.is_superuser %}admin{% else %}user{% endif %}">
@@ -19,46 +19,64 @@
     {% endif %}
 </div>
 
-<!-- Request a New Quotation Card -->
+<!-- Requested Quotations Cards -->
 <div class="container my-4">
-    <div class="card text-center">
-        <div class="card-header">
-            <h2>My Requested Quotations</h2> <!-- Header for the requested quotations -->
-        </div>
-        <div class="card-body">
-            {% if user_quotes %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Project Element</th>
-                            <th>Material</th>
-                            <th>Requested On</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for quote in user_quotes %}
-                        <tr>
-                            <td>{{ quote.project_element.name }}</td>
-                            <td>
+    <div class="row">
+        {% if user_quotes %}
+            {% for quote in user_quotes %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">{{ quote.project_element.name }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Material:</strong>
                                 {% if quote.material %}
                                     {{ quote.material.name }}
                                 {% else %}
                                     N/A
                                 {% endif %}
-                            </td>
-                            <td>{{ quote.created_at|date:"Y-m-d H:i" }}</td>
-                            <td>{{ quote.status }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p>You have not requested any quotations yet.</p>
-            {% endif %}
-            <p class="card-text">Click the button below to request a new quotation for your project.</p>
-            <a href="{% url 'quotation_request' %}" class="btn btn-primary">Request Quotation</a>
-        </div>
+                            </p>
+                            <p><strong>Quantity:</strong> {{ quote.quantity }}</p>
+                            <p><strong>Cost per Material:</strong>
+                                {% if quote.material %}
+                                    {{ quote.material.price|floatformat:2 }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </p>
+                            <p><strong>Markup %:</strong>
+                                {% if quote.material %}
+                                    {% if quote.material.markup %}
+                                        {{ quote.material.markup|floatformat:2 }}%
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </p>
+                            <p><strong>Total Cost:</strong>
+                                {% if quote.material %}
+                                    {{ quote.total_cost|floatformat:2 }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </p>
+                            <p><strong>Requested On:</strong> {{ quote.created_at|date:"Y-m-d H:i" }}</p>
+                            <p><strong>Status:</strong> {{ quote.status }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>You have not requested any quotations yet.</p>
+        {% endif %}
+    </div>
+
+    <p class="card-text text-center mt-3">Click the button below to request a new quotation for your project.</p>
+    <div class="text-center">
+        <a href="{% url 'quotation_request' %}" class="btn btn-primary">Request Quotation</a>
     </div>
 </div>
 

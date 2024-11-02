@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Home{% endblock %}
+{% block title %}My Quotes{% endblock %}
 
 {% block content %}
 <div class="container text-center">
-    <h1>Welcome to the Home Page!</h1>
+    <h1>My Requested Quotations</h1>
 
     {% if user.is_authenticated %}
         <p class="message {% if user.is_superuser %}admin{% else %}user{% endif %}">
@@ -19,11 +19,11 @@
     {% endif %}
 </div>
 
-<!-- Request a New Quotation Card -->
+<!-- Requested Quotations Card -->
 <div class="container my-4">
     <div class="card text-center">
         <div class="card-header">
-            My Requested Quotations
+            <h2>My Requested Quotations</h2> <!-- Header for the requested quotations -->
         </div>
         <div class="card-body">
             {% if user_quotes %}
@@ -32,6 +32,10 @@
                         <tr>
                             <th>Project Element</th>
                             <th>Material</th>
+                            <th>Quantity</th>
+                            <th>Cost per Material</th>
+                            <th>Markup %</th>
+                            <th>Total Cost</th>
                             <th>Requested On</th>
                             <th>Status</th>
                         </tr>
@@ -43,6 +47,32 @@
                             <td>
                                 {% if quote.material %}
                                     {{ quote.material.name }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>{{ quote.quantity }}</td>
+                            <td>
+                                {% if quote.material %}
+                                    {{ quote.material.price|floatformat:2 }}  <!-- Cost per material -->
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if quote.material %}
+                                    {% if quote.material.markup %}
+                                        {{ quote.material.markup|floatformat:2 }} %  <!-- Markup percentage -->
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if quote.material %}
+                                    {{ quote.total_cost|floatformat:2 }}  <!-- Total cost calculated in view -->
                                 {% else %}
                                     N/A
                                 {% endif %}
