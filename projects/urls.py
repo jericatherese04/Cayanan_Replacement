@@ -11,6 +11,7 @@ urlpatterns = [
     path('add-element/', views.add_project_element, name='add_project_element'),
     path('add-material/', views.add_material, name='add_material'),
     path('pending-projects/', views.view_pending_projects, name='view_pending_projects'),
-    path('update-prices/<int:element_id>/', views.update_prices, name='update_prices'),
+    path('update-prices/', views.update_prices, name='update_prices'),
+    path('delete-quotation/<int:request_id>/', views.delete_quotation_request, name='delete_quotation'),
 
 ]

@@ -5,11 +5,18 @@ from .forms import QuotationRequestForm
 from django.contrib.auth.decorators import login_required
 import logging
 from .forms import ProjectElementForm, MaterialForm
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 import json
-
-
 logger = logging.getLogger(__name__)
+
+
+@login_required
+def delete_quotation_request(request, request_id):
+    quotation_request = get_object_or_404(QuotationRequest, id=request_id, user=request.user)
+    quotation_request.delete()
+    return redirect('homepage')  # Redirect to the quotes page after deletion
 @login_required
 def all_project_materials_and_elements(request):
     elements = ProjectElement.objects.prefetch_related('materials').all()
@@ -34,46 +41,33 @@ def all_project_materials_and_elements(request):
     return render(request, 'all_project_materials_and_elements.html', {'elements': elements})
 
 
-@csrf_exempt  # For testing, consider removing this in production
-def update_prices(request, element_id):
+@csrf_exempt  # Use this only for testing; remove in production for security reasons
+def update_prices(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            logger.debug(f"Updating prices for element {element_id}: {data}")  # Log the incoming data
-
             prices = data.get('prices', [])
             markups = data.get('markups', [])
 
-            # Update prices in the database
-            for price_info in prices:
-                material_id = price_info.get('materialId')
-                price = price_info.get('price')
+            # Update prices
+            for item in prices:
+                material_id = item['materialId']
+                price = item['price']
+                Material.objects.filter(id=material_id).update(price=price)
 
-                if material_id is not None and price is not None:
-                    material = get_object_or_404(Material, id=material_id)
-                    material.price = price
-                    material.save()
-                else:
-                    logger.warning(f"Invalid data for material price update: {price_info}")
+            # Update markups
+            for item in markups:
+                material_id = item['materialId']
+                markup = item['markup']
+                Material.objects.filter(id=material_id).update(markup=markup)
 
-            # Update markups in the database
-            for markup_info in markups:
-                material_id = markup_info.get('materialId')
-                markup = markup_info.get('markup')
-
-                if material_id is not None and markup is not None:
-                    material = get_object_or_404(Material, id=material_id)
-                    material.markup = markup
-                    material.save()
-                else:
-                    logger.warning(f"Invalid data for material markup update: {markup_info}")
-
-            return JsonResponse({'status': 'success'})
+            return JsonResponse({'success': True, 'message': 'Prices and markups updated successfully.'})
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON.'}, status=400)
         except Exception as e:
-            logger.error(f"Error updating prices for element {element_id}: {e}")
-            return JsonResponse({'status': 'fail', 'error': str(e)}, status=400)
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-    return JsonResponse({'status': 'fail'}, status=400)
+    return JsonResponse({'success': False, 'error': 'Only POST method is allowed.'}, status=405)
 
 
 @login_required
@@ -112,12 +106,11 @@ def list_of_my_quotes(request):
     # Add total cost calculation dynamically
     for quote in user_quotes:
         if quote.material:
-            quote.total_cost = quote.material.price * quote.quantity  # Calculate total cost
+            quote.total_cost = quote.material.price * quote.quantity * (1 + (quote.material.markup / 100))  # Include markup in total cost
         else:
             quote.total_cost = 0  # Handle case where material is None
 
     return render(request, 'homepage.html', {'user_quotes': user_quotes})
-
 
 
 
@@ -129,24 +122,35 @@ def quotation_request(request):
         if form.is_valid():
             element = form.cleaned_data['element']
             material = form.cleaned_data['material'] if 'material' in form.cleaned_data else None
+            quantity = form.cleaned_data['quantity']
+            area_size = form.cleaned_data['area_size']
+            location = form.cleaned_data['location']
 
             QuotationRequest.objects.create(
                 user=request.user,
                 project_element=element,
                 material=material,
+                quantity=quantity,
+                area_size=area_size,
+                location=location,
                 status="Pending"
             )
             return redirect('quotation_success')
     else:
         form = QuotationRequestForm()
 
-    elements = ProjectElement.objects.prefetch_related('materials').all()
-    return render(request, 'quotation_request.html', {'form': form, 'project_elements': elements})
+    elements = ProjectElement.objects.prefetch_related('materials').all()  # This fetches all project elements
+
+    return render(request, 'quotation_request.html', {
+        'form': form,
+        'project_elements': elements  # Ensure this is passed to the template
+    })
+
 
 def load_materials(request):
     element_id = request.GET.get('element_id')
     materials = Material.objects.filter(project_element_id=element_id)
-    return JsonResponse(list(materials.values('id', 'name')), safe=False)
+    return JsonResponse(list(materials.values('id', 'name', 'price', 'markup')), safe=False)
 
 def quotation_success(request):
     return render(request, 'quotation_success.html')

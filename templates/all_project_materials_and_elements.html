@@ -30,7 +30,7 @@
                                     <div class="col-md-3">
                                         <div class="form-group">
                                             <label for="material_markup_{{ material.id }}">Markup %:</label>
-                                            <input type="number" step="0.01" name="material_markup_{{ material.id }}" id="material_markup_{{ material.id }}" class="form-control" value="0">
+                                            <input type="number" step="0.01" name="material_markup_{{ material.id }}" id="material_markup_{{ material.id }}" class="form-control" value="{{ material.markup }}">
                                         </div>
                                     </div>
                                     <div class="col-md-2">
@@ -47,59 +47,94 @@
         {% empty %}
             <div class="alert alert-warning">No project elements found.</div>
         {% endfor %}
-        <button type="button" class="btn btn-success" onclick="updateAllPrices()">Update All Prices</button>
-        <button type="submit" class="btn btn-primary">Submit All Changes</button>
+        <button type="button" class="btn btn-primary" id="submit-prices">Submit All Changes</button>
     </form>
 </div>
-
 <script>
-    // Function to compute total costs for materials when prices or markups change
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-        input.addEventListener('input', function() {
-            const materialId = this.id.split('_')[2]; // Get the material ID
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to update total cost based on price and markup
+        function updateTotalCost(materialId) {
             const materialPrice = parseFloat(document.getElementById(`material_price_${materialId}`).value) || 0;
             const materialMarkup = parseFloat(document.getElementById(`material_markup_${materialId}`).value) || 0;
 
-            // Calculate total cost including markup
             const totalCost = materialPrice + (materialPrice * (materialMarkup / 100));
             document.getElementById(`total_cost_material_${materialId}`).textContent = totalCost.toFixed(2);
+        }
+
+        // Calculate total costs for all materials on page load
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            const materialId = input.id.split('_')[2];
+            updateTotalCost(materialId); // Call the function for each material
+        });
+
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const materialId = this.id.split('_')[2];
+                updateTotalCost(materialId);
+            });
+        });
+
+        document.getElementById('submit-prices').addEventListener('click', function(event) {
+            event.preventDefault();
+
+            const data = {
+                prices: [],
+                markups: []
+            };
+
+            document.querySelectorAll('input[name^="material_price_"], input[name^="material_markup_"]').forEach(input => {
+                const materialId = input.name.split('_')[2];
+                if (input.name.startsWith('material_price_')) {
+                    const price = parseFloat(input.value) || 0;
+                    data.prices.push({ materialId, price });
+                } else if (input.name.startsWith('material_markup_')) {
+                    const markup = parseFloat(input.value) || 0;
+                    data.markups.push({ materialId, markup });
+                }
+            });
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch('{% url "update_prices" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Unknown error occurred');
+                    });
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    // Check if updatedMaterials is defined and is an array
+                    if (Array.isArray(data.updatedMaterials)) {
+                        data.updatedMaterials.forEach(material => {
+                            updateTotalCost(material.id);
+                        });
+                    } else {
+                        console.warn('No updated materials received.');
+                    }
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update prices: ' + error.message);
+            });
         });
     });
-
-    function updateAllPrices() {
-        const prices = [];
-        const markups = [];
-
-        // Collect all prices and markups from the form
-        document.querySelectorAll('input[name^="material_price_"], input[name^="material_markup_"]').forEach(input => {
-            const materialId = input.name.split('_')[2]; // Get the material ID
-            if (input.name.startsWith(`material_price_`)) {
-                const price = parseFloat(input.value) || 0;
-                prices.push({ materialId, price });
-            } else if (input.name.startsWith(`material_markup_`)) {
-                const markup = parseFloat(input.value) || 0;
-                markups.push({ materialId, markup });
-            }
-        });
-
-        // Send the updated prices and markups to the backend
-        fetch('/update-prices/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'  // Add CSRF token for security
-            },
-            body: JSON.stringify({ prices, markups })
-        })
-        .then(response => {
-            if (response.ok) {
-                alert('Prices updated successfully!');
-                location.reload();  // Reload the page to see the updated prices
-            } else {
-                alert('Failed to update prices.');
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
 </script>
+
+
+
 {% endblock %}

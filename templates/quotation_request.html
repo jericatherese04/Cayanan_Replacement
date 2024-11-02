@@ -4,12 +4,16 @@
 
 {% block content %}
 <h1>Request a Project Quotation</h1>
-<form method="post">
+<form method="post" id="quotation-form">
     {% csrf_token %}
 
-    <!-- Render the QuotationRequestForm for element selection -->
     <label for="element">Select a Project Element:</label><br>
-    {{ form.element }}  <!-- Renders the radio buttons for ProjectElements -->
+    {% for project_element in project_elements %}
+        <label>
+            <input type="radio" name="element" value="{{ project_element.id }}" required>
+            {{ project_element.name }}
+        </label><br>
+    {% endfor %}
 
     <!-- Container for materials, initially hidden -->
     <div id="materials-container" style="display:none;">
@@ -17,10 +21,32 @@
         <div id="materials"></div>  <!-- This will be populated dynamically -->
     </div>
 
+    <div>
+        <label for="quantity">Quantity:</label>
+        <input type="number" name="quantity" id="quantity" min="1" value="1" required>
+    </div>
+
+    <div>
+        <label for="area_size">Area Size (in sq. meters):</label>
+        <input type="text" name="area_size" id="area_size" placeholder="Enter area size" required>
+    </div>
+
+    <div>
+        <label for="location">Location:</label>
+        <input type="text" name="location" id="location" placeholder="Enter location" required>
+    </div>
+
+    <div id="price-info" style="display:none;">
+        <p>Price per Material: <span id="material-price">0.00</span></p>
+        <p>Markup %: <span id="material-markup">0.00</span></p> <!-- Added markup display -->
+        <p>Total Cost: <span id="total-cost">0.00</span></p>
+    </div>
+
     <button type="submit">Submit Request</button>
 </form>
 
 {% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     $(document).ready(function() {
         $('input[name="element"]').change(function() {
@@ -30,12 +56,17 @@
                 data: {
                     'element_id': elementId
                 },
+                dataType: 'json',
                 success: function(data) {
+                    console.log("Materials loaded:", data);  // Log the loaded materials
                     $('#materials').empty();  // Clear previous materials
                     if (data.length > 0) {
                         data.forEach(function(material) {
                             $('#materials').append(
-                                `<label><input type="radio" name="material" value="${material.id}"> ${material.name}</label><br>`
+                                `<label>
+                                    <input type="radio" name="material" value="${material.id}" class="material-radio" data-price="${material.price}" data-markup="${material.markup}">
+                                    ${material.name} - Price per Quantity: ${parseFloat(material.price).toFixed(2)} (Markup: ${parseFloat(material.markup).toFixed(2)}%)
+                                </label><br>`
                             );
                         });
                         $('#materials-container').show();  // Show materials container
@@ -47,6 +78,42 @@
                     console.error("AJAX error:", error);
                 }
             });
+        });
+
+        // Update price info when a material is selected or quantity changes
+        $(document).on('change', 'input[name="material"], #quantity ', function() {
+            var selectedMaterial = $('input[name="material"]:checked');
+            var quantity = $('#quantity').val();
+            if (selectedMaterial.length > 0) {
+                var materialPrice = parseFloat(selectedMaterial.data('price')) || 0; // Get price from data attribute
+                var markupPercentage = parseFloat(selectedMaterial.data('markup')) || 0; // Get markup from data attribute
+
+                console.log("Selected Material Price:", materialPrice);  // Log the selected material's price
+                console.log("Selected Material Markup:", markupPercentage);  // Log the selected material's markup
+
+                var totalCost = (materialPrice * quantity) * (1 + (markupPercentage / 100)); // Adjust total cost with markup
+
+                $('#material-price').text(materialPrice.toFixed(2));
+                $('#material-markup').text(markupPercentage.toFixed(2)); // Show markup percentage
+                $('#total-cost').text(totalCost.toFixed(2)); // Show total cost
+                $('#price-info').show(); // Show the price info section
+            } else {
+                $('#material-price').text('0.00');
+                $('#material-markup').text('0.00');
+                $('#total-cost').text('0.00');
+                $('#price-info').hide(); // Hide if no material is selected
+            }
+        });
+
+        // Validate form before submission
+        $('#quotation-form').on('submit', function(event) {
+            var areaSize = $('#area_size').val().trim();
+            var location = $('#location').val().trim();
+
+            if (areaSize === "" || location === "") {
+                event.preventDefault();  // Prevent form submission
+                alert("Please fill in all required fields, including Area Size and Location.");
+            }
         });
     });
 </script>
