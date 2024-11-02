@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}All Project Materials and Elements{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">All Project Materials and Elements</h1>
+
+    <form method="post" id="update-prices-form">
+        {% csrf_token %}
+        {% for element in elements %}
+            <div class="card mb-4" id="element_{{ element.id }}">
+                <div class="card-header">
+                    <h2 class="mb-0">{{ element.name }}</h2>
+                    <button type="button" class="btn btn-danger float-end delete-element" data-element-id="{{ element.id }}">Delete Element</button>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for material in element.materials.all %}
+                            <li class="list-group-item" id="material_{{ material.id }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4">
+                                        <strong>{{ material.name }}</strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="material_price_{{ material.id }}">Material Price:</label>
+                                            <input type="number" step="0.01" name="material_price_{{ material.id }}" id="material_price_{{ material.id }}" class="form-control" value="{{ material.price }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="material_markup_{{ material.id }}">Markup %:</label>
+                                            <input type="number" step="0.01" name="material_markup_{{ material.id }}" id="material_markup_{{ material.id }}" class="form-control" value="{{ material.markup }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong>Total Cost: <span id="total_cost_material_{{ material.id }}">{{ material.price }}</span></strong>
+                                        <button type="button" class="btn btn-danger delete-material" data-material-id="{{ material.id }}">Delete</button>
+                                    </div>
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item">No materials found for this element.</li>
+                        {% endfor %}
+                    </ul>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-secondary update-prices" data-element-id="{{ element.id }}">Update Prices</button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMaterialModal" data-element-id="{{ element.id }}">+ Add Material</button>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-warning">No project elements found.</div>
+        {% endfor %}
+        <button type="button" class="btn btn-primary" id="submit-prices">Submit All Changes</button>
+    </form>
+</div>
+
+<!-- Add Material Modal -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addMaterialModalLabel">Add New Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-material-form">
+                    <div class="mb-3">
+                        <label for="material_name" class="form-label">Material Name</label>
+                        <input type="text" class="form-control" id="material_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="material_price" class="form-label">Material Price</label>
+                        <input type="number" step="0.01" class="form-control" id="material_price" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="material_markup" class="form-label">Markup %</label>
+                        <input type="number" step="0.01" class="form-control" id="material_markup" required>
+                    </div>
+                    <input type="hidden" id="element_id" value="">
+                    <button type="submit" class="btn btn-primary">Add Material</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Existing update total cost code here...
+
+        // Event listener for opening the modal
+        document.querySelectorAll('[data-bs-target="#addMaterialModal"]').forEach(button => {
+            button.addEventListener('click', function() {
+                const elementId = this.getAttribute('data-element-id');
+                document.getElementById('element_id').value = elementId; // Set the element ID in the modal
+            });
+        });
+
+        // Event listener for adding a new material
+        document.getElementById('add-material-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const elementId = document.getElementById('element_id').value;
+            const materialName = document.getElementById('material_name').value;
+            const materialPrice = parseFloat(document.getElementById('material_price').value) || 0;
+            const materialMarkup = parseFloat(document.getElementById('material_markup').value) || 0;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch(`/add-material/${elementId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    name: materialName,
+                    price: materialPrice,
+                    markup: materialMarkup
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Add new material to the UI
+                    const newMaterialHtml = `
+                        <li class="list-group-item" id="material_${data.material.id}">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <strong>${data.material.name}</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="material_price_${data.material.id}">Material Price:</label>
+                                        <input type="number" step="0.01" name="material_price_${data.material.id}" id="material_price_${data.material.id}" class="form-control" value="${data.material.price}" onchange="updateTotalCost(${data.material.id})">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="material_markup_${data.material.id}">Markup %:</label>
+                                        <input type="number" step="0.01" name="material_markup_${data.material.id}" id="material_markup_${data.material.id}" class="form-control" value="${data.material.markup}" onchange="updateTotalCost(${data.material.id})">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <strong>Total Cost: <span id="total_cost_material_${data.material.id}">${data.material.price}</span></strong>
+                                    <button type="button" class="btn btn-danger delete-material" data-material-id="${data.material.id}">Delete</button>
+                                </div>
+                            </div>
+                        </li>
+                    `;
+
+                    document.querySelector(`#element_${elementId} .list-group`).insertAdjacentHTML('beforeend', newMaterialHtml);
+                    updateTotalCost(data.material.id); // Update the total cost for the new material
+                    document.getElementById('addMaterialModal').modal('hide'); // Hide the modal
+                    this.reset(); // Reset the form
+                } else {
+                    alert('Failed to add material: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to add material: ' + error.message);
+            });
+        });
+    });
+</script>
+{% endblock %}

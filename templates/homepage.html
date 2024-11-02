@@ -3,6 +3,17 @@
 {% block title %}My Quotes{% endblock %}
 
 {% block content %}
+<style>
+    .card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease; /* Add transition for both transform and shadow */
+    }
+
+    .card:hover {
+        transform: scale(1.05); /* Slightly enlarges the card */
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Adds a larger shadow */
+    }
+</style>
+
 <div class="container text-center">
     <h1>My Requested Quotations</h1>
 
@@ -64,8 +75,9 @@
                                 {% endif %}
                             </p>
                             <p><strong>Requested On:</strong> {{ quote.created_at|date:"Y-m-d H:i" }}</p>
-                            <p><strong>Status:</strong> {{ quote.status }}</p>
+                            <p><strong>Status:</strong> {{ quote.status }}</p> <!-- Status Display -->
                             <p><strong>Location:</strong> {{ quote.location }}</p> <!-- Added Location -->
+                            <p><strong>Square Area Filled:</strong> {{ quote.area_size }} sq. units</p> <!-- Added Square Area Description -->
                             <div class="text-center mt-2">
                                 <a href="{% url 'delete_quotation' quote.id %}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this quotation request?');">Delete Request</a>
                             </div>

@@ -8,9 +8,28 @@ from .forms import ProjectElementForm, MaterialForm
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-import json
-logger = logging.getLogger(__name__)
+from django.views import View
 
+import json
+
+logger = logging.getLogger(__name__)
+class DeleteElementView(View):
+    def delete(self, request, pk):
+        try:
+            element = ProjectElement.objects.get(pk=pk)
+            element.delete()
+            return JsonResponse({'success': True, 'message': 'Element deleted successfully.'})
+        except ProjectElement.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Element not found.'}, status=404)
+
+class DeleteMaterialView(View):
+    def delete(self, request, pk):
+        try:
+            material = Material.objects.get(pk=pk)
+            material.delete()
+            return JsonResponse({'success': True, 'message': 'Material deleted successfully.'})
+        except Material.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Material not found.'}, status=404)
 
 @login_required
 def delete_quotation_request(request, request_id):

@@ -12,11 +12,12 @@
             <div class="card mb-4" id="element_{{ element.id }}">
                 <div class="card-header">
                     <h2 class="mb-0">{{ element.name }}</h2>
+                    <button type="button" class="btn btn-danger float-end delete-element" data-element-id="{{ element.id }}">Delete Element</button>
                 </div>
                 <div class="card-body">
                     <ul class="list-group">
                         {% for material in element.materials.all %}
-                            <li class="list-group-item">
+                            <li class="list-group-item" id="material_{{ material.id }}">
                                 <div class="row align-items-center">
                                     <div class="col-md-4">
                                         <strong>{{ material.name }}</strong>
@@ -35,6 +36,7 @@
                                     </div>
                                     <div class="col-md-2">
                                         <strong>Total Cost: <span id="total_cost_material_{{ material.id }}">{{ material.price }}</span></strong>
+                                        <button type="button" class="btn btn-danger delete-material" data-material-id="{{ material.id }}">Delete</button>
                                     </div>
                                 </div>
                             </li>
@@ -42,6 +44,9 @@
                             <li class="list-group-item">No materials found for this element.</li>
                         {% endfor %}
                     </ul>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-secondary update-prices" data-element-id="{{ element.id }}">Update Prices</button>
+                    </div>
                 </div>
             </div>
         {% empty %}
@@ -50,6 +55,7 @@
         <button type="button" class="btn btn-primary" id="submit-prices">Submit All Changes</button>
     </form>
 </div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Function to update total cost based on price and markup
@@ -132,9 +138,114 @@
                 alert('Failed to update prices: ' + error.message);
             });
         });
+
+        // Event listener for individual update buttons
+        document.querySelectorAll('.update-prices').forEach(button => {
+            button.addEventListener('click', function() {
+                const elementId = this.getAttribute('data-element-id');
+                const prices = [];
+                const markups = [];
+
+                // Collect all prices and markups for this element
+                document.querySelectorAll(`#element_${elementId} input[name^="material_price_"], #element_${elementId} input[name^="material_markup_"]`).forEach(input => {
+                    const materialId = input.name.split('_')[2];
+                    if (input.name.startsWith('material_price_')) {
+                        const price = parseFloat(input.value) || 0;
+                        prices.push({ materialId, price });
+                    } else if (input.name.startsWith('material_markup_')) {
+                        const markup = parseFloat(input.value) || 0;
+                        markups.push({ materialId, markup });
+                    }
+                });
+
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                fetch('{% url "update_prices" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ prices, markups })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        prices.forEach(item => {
+                            updateTotalCost(item.materialId); // Update total cost for each material
+                        });
+                    } else {
+                        throw new Error(data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to update prices for this element: ' + error.message);
+                });
+            });
+        });
+
+        // Event listener for delete buttons
+        document.querySelectorAll('.delete-element').forEach(button => {
+            button.addEventListener('click', function() {
+                const elementId = this.getAttribute('data-element-id');
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                if (confirm('Are you sure you want to delete this element?')) {
+                    fetch(`{% url "delete_element" 0 %}`.replace('0', elementId), {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            document.getElementById(`element_${elementId}`).remove();
+                            alert('Element deleted successfully.');
+                        } else {
+                            return response.json().then(data => {
+                                throw new Error(data.error || 'Failed to delete element.');
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to delete element: ' + error.message);
+                    });
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-material').forEach(button => {
+            button.addEventListener('click', function() {
+                const materialId = this.getAttribute('data-material-id');
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                if (confirm('Are you sure you want to delete this material?')) {
+                    fetch(`{% url "delete_material" 0 %}`.replace('0', materialId), {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            document.getElementById(`material_${materialId}`).remove();
+                            alert('Material deleted successfully.');
+                        } else {
+                            return response.json().then(data => {
+                                throw new Error(data.error || 'Failed to delete material.');
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to delete material: ' + error.message);
+                    });
+                }
+            });
+        });
     });
 </script>
-
-
-
 {% endblock %}
