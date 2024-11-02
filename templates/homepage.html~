@@ -23,7 +23,7 @@
 <div class="container my-4">
     <div class="card text-center">
         <div class="card-header">
-            <h2>My Requested Quotations</h2> <!-- Header for the requested quotations -->
+            My Requested Quotations
         </div>
         <div class="card-body">
             {% if user_quotes %}

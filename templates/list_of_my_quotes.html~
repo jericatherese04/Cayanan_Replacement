@@ -1,0 +1,37 @@
+<!-- list_of_my_quotes.html -->
+{% extends 'base.html' %}
+
+{% block title %}My Quotations{% endblock %}
+
+{% block content %}
+<h1>My Requested Quotations</h1>
+
+{% if user_quotes %}
+    <table>
+        <tr>
+            <th>Project Element</th>
+            <th>Material</th>
+            <th>Requested On</th>
+            <th>Status</th>
+        </tr>
+        {% for quote in user_quotes %}
+        <tr>
+            <td>{{ quote.project_element.name }}</td>
+            <td>
+                {% if quote.material %}
+                    {{ quote.material.name }}
+                {% else %}
+                    N/A
+                {% endif %}
+            </td>
+            <td>{{ quote.created_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ quote.project_element.status }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <p>You have not requested any quotations yet.</p>
+{% endif %}
+
+<a href="{% url 'quotation_request' %}">Request a New Quotation</a>
+{% endblock %}

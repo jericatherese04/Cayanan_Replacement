@@ -1,0 +1,9 @@
+<!-- quotation_success.html -->
+{% extends 'base.html' %}
+
+{% block title %}Quotation Request Submitted{% endblock %}
+
+{% block content %}
+<h1>Your quotation request has been submitted!</h1>
+<a href="{% url 'quotation_request' %}">Submit another request</a>
+{% endblock %}
