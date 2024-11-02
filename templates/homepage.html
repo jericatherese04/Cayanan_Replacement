@@ -65,12 +65,15 @@
                                 <p><strong>Total Cost:</strong> <span class="total-cost">{{ quote.total_cost|floatformat:2 }}</span></p>
                             {% endif %}
                             <p><strong>Requested On:</strong> {{ quote.created_at|date:"Y-m-d H:i" }}</p>
+                            <p><strong>Updated On:</strong> {{ quote.updated_at|date:"Y-m-d H:i" }}</p> <!-- New field -->
+                            <p><strong>Start Date:</strong> {{ quote.start_date|date:"Y-m-d" }}</p> <!-- New field -->
+                            <p><strong>End Date:</strong> {{ quote.end_date|date:"Y-m-d" }}</p> <!-- New field -->
                             <p><strong>Status:</strong> <span class="status-text">{{ quote.status }}</span></p>
                             <p><strong>Location:</strong> {{ quote.location }}</p>
                             <p><strong>Square Area Filled:</strong> {{ quote.area_size }} sq. units</p>
 
                             {% if quote.status == "Approved by Admin" %}
-                                <div class="text-center mt-3">
+                                <div class="text-center mt-3 ">
                                     <form id="approveForm-{{ quote.id }}" action="{% url 'approve_quotation' quote.id %}" method="POST" style="display:inline;">
                                         {% csrf_token %}
                                         <button type="button" class="btn btn-success approve-button" data-quote-id="{{ quote.id }}">Approve</button>

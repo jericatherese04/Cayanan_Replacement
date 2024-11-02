@@ -11,6 +11,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views import View
 from django.http import HttpResponseForbidden
 import json
+from django.utils import timezone
+
 
 @login_required
 def view_complete_projects(request):
@@ -25,6 +27,7 @@ def complete_quotation(request, quotation_id):
 
     # Update the status to "Complete"
     quotation.status = "Complete"
+    quotation.end_date = timezone.now().date()  # Set end_date to today
     quotation.save()
 
     # Redirect to the page showing approved quotations (or any other page you prefer)
@@ -62,6 +65,8 @@ def decline_quotation(request, quote_id):
         return JsonResponse({'success': False, 'message': 'You are not allowed to decline this quotation.'})
 
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+from django.utils import timezone  # Make sure to import timezone
+
 @csrf_exempt  # Only if absolutely necessary; otherwise, manage CSRF in AJAX
 def approve_quotation(request, quote_id):
     quote = get_object_or_404(QuotationRequest, id=quote_id)
@@ -69,9 +74,10 @@ def approve_quotation(request, quote_id):
     if request.method == 'POST':
         if request.user.is_authenticated:
             quote.status = "Approved by User"
+            quote.start_date = timezone.now().date()  # Set start_date to the current date
             quote.save()
-            return JsonResponse({'success': True, 'message': 'Quotation declined successfully!'})
-        return JsonResponse({'success': False, 'message': 'You are not allowed to decline this quotation.'})
+            return JsonResponse({'success': True, 'message': 'Quotation approved successfully!'})
+        return JsonResponse({'success': False, 'message': 'You are not allowed to approve this quotation.'})
 
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 @csrf_exempt  # Only if absolutely necessary; otherwise, manage CSRF in AJAX
