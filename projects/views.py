@@ -9,11 +9,67 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.views import View
-
-
+from django.http import HttpResponseForbidden
 import json
 
-# views.py
+
+@login_required
+def approved_quotations(request):
+    # Fetch all quotations approved by the admin
+    approved_quotes = QuotationRequest.objects.filter(status="Approved by Admin")
+
+    # Fetch all quotations approved by the user
+    user_approved_quotes = QuotationRequest.objects.filter(status="Approved by User", user=request.user)
+
+    return render(request, 'view_approved_project.html', {
+        'approved_quotes': approved_quotes,
+        'user_approved_quotes': user_approved_quotes
+    })
+@login_required
+def declined_projects(request):
+    if request.user.is_authenticated:
+        declined_quotes = QuotationRequest.objects.filter(status="Declined by User", user=request.user)
+    else:
+        declined_quotes = []
+
+    return render(request, 'view_declined_project.html', {'declined_quotes': declined_quotes})
+
+@csrf_exempt
+def decline_quotation(request, quote_id):
+    quote = get_object_or_404(QuotationRequest, id=quote_id)
+
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            quote.status = "Declined by User"
+            quote.save()
+            return JsonResponse({'success': True, 'message': 'Quotation declined successfully!'})
+        return JsonResponse({'success': False, 'message': 'You are not allowed to decline this quotation.'})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+@csrf_exempt  # Only if absolutely necessary; otherwise, manage CSRF in AJAX
+def approve_quotation(request, quote_id):
+    quote = get_object_or_404(QuotationRequest, id=quote_id)
+
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            quote.status = "Approved by User"
+            quote.save()
+            return JsonResponse({'success': True, 'message': 'Quotation declined successfully!'})
+        return JsonResponse({'success': False, 'message': 'You are not allowed to decline this quotation.'})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+@csrf_exempt  # Only if absolutely necessary; otherwise, manage CSRF in AJAX
+def approve_project_request(request, project_id):
+    project_request = get_object_or_404(QuotationRequest, id=project_id)
+
+    if request.method == 'POST':
+        if request.user.is_authenticated and request.user.is_staff:
+            project_request.status = 'Approved by Admin'
+            project_request.save()
+            return JsonResponse({'success': True, 'message': 'Request approved successfully!'})
+        return JsonResponse({'success': False, 'message': 'You are not allowed to approve this request.'})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
 def edit_project(request, project_id):
@@ -53,11 +109,10 @@ def edit_project(request, project_id):
                     material.save()
 
                     # Add the material to the project
-                    project.material.add(material)  # Correctly associate the material with the project
+                    project.material.add(material)
 
                 except Material.DoesNotExist:
-                    # Handle the case where the material does not exist
-                    continue  # Optionally log this or handle it differently
+                    continue  # Handle the case where the material does not exist
 
             # Redirect to a success page after saving changes
             return redirect('homepage')
@@ -70,15 +125,17 @@ def edit_project(request, project_id):
     materials_with_details = Material.objects.all()
 
     # Access the related materials using the correct attribute
-    selected_material_ids = project.material.values_list('id', flat=True)  # Get selected material IDs
+    selected_material_ids = project.material.values_list('id', flat=True)
 
-    # Pass the form and materials to the context for rendering
+    # Pass the project, form, and materials to the context for rendering
     context = {
+        'project': project,  # Include the project object in the context
         'form': form,
         'materials_with_details': materials_with_details,
-        'selected_material_ids': selected_material_ids,  # Pass selected material IDs for the template
+        'selected_material_ids': selected_material_ids,
     }
     return render(request, 'edit_project.html', context)
+
 
 
 logger = logging.getLogger(__name__)

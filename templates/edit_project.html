@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mt-5">
     <h1>Edit Project Request</h1>
-    <form method="POST" id="editProjectForm">
+    <form method="POST" id="editProjectForm" action="{% url 'edit_project' project.id %}">
         {% csrf_token %}
 
         <div>
@@ -15,22 +15,19 @@
 
         <div>
             <h3>Select Materials</h3>
-    <ul id="materialList" class="list-unstyled">
-    {% for material in materials_with_details %}
-        <li class="mb-2">
-            <input type="checkbox" id="id_material_{{ material.id }}" name="materials" value="{{ material.id }}"
-                {% if material.id in selected_material_ids %}checked{% endif %} onchange="calculateTotalCost()">
-            <strong>{{ material.name }}</strong>
-            - Price: <input type="number" step="0.01" id="price-{{ material.id }}" name="material_price_{{ material.id }}"
-                value="{{ material.price|floatformat:2 }}" onchange="calculateTotalCost()">
-            - Markup: <input type="number" step="0.01" id="markup-{{ material.id }}" name="material_markup_{{ material.id }}"
-                value="{{ material.markup|floatformat:2 }}" onchange="calculateTotalCost()">%
-        </li>
-    {% endfor %}
-</ul>
-
-
-
+            <ul id="materialList" class="list-unstyled">
+                {% for material in materials_with_details %}
+                    <li class="mb-2">
+                        <input type="checkbox" id="id_material_{{ material.id }}" name="materials" value="{{ material.id }}"
+                            {% if material.id in selected_material_ids %}checked{% endif %} onchange="calculateTotalCost()">
+                        <strong>{{ material.name }}</strong>
+                        - Price: <input type="number" step="0.01" id="price-{{ material.id }}" name="material_price_{{ material.id }}"
+                            value="{% if material.id in selected_material_ids %}{{ material.price|floatformat:2 }}{% else %}0.00{% endif %}" onchange="calculateTotalCost()">
+                        - Markup: <input type="number" step="0.01" id="markup-{{ material.id }}" name="material_markup_{{ material.id }}"
+                            value="{% if material.id in selected_material_ids %}{{ material.markup|floatformat:2 }}{% else %}0.00{% endif %}">%
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
 
         <div>
@@ -48,36 +45,42 @@
             {{ form.location }}
         </div>
 
-        <h3>Total Cost: <span id="totalCost">0.00</span></h3> <!-- Placeholder for total cost -->
+        <h3>Total Cost: <span id="totalCost">0.00</span></h3>
 
         <button type="submit" class="btn btn-primary">Save Changes</button>
     </form>
+
+    {% if project.id %} <!-- Ensure project.id is available -->
+    <form id="approveForm" action="{% url 'approve_project' project.id %}" method="POST" style="display:inline;">
+        {% csrf_token %}
+        <button type="button" class="btn btn-success" id="approveButton">Approve</button>
+    </form>
+    {% else %}
+        <p>Error: Project ID not found.</p>
+    {% endif %}
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- Include jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
     function calculateTotalCost() {
         let totalCost = 0;
-        let quantity = parseFloat(document.getElementById('id_quantity').value) || 1; // Default to 1 if quantity is empty
+        let quantity = parseFloat($('#id_quantity').val()) || 1; // Default to 1 if quantity is empty
 
-        {% for material in materials_with_details %}
-            const isSelected = document.getElementById('id_material_{{ material.id }}').checked;
-            if (isSelected) {
-                const price = parseFloat(document.getElementById('price-{{ material.id }}').value) || 0;
-                const markup = parseFloat(document.getElementById('markup-{{ material.id }}').value) || 0;
-                totalCost += (price + (price * (markup / 100))) * quantity; // Calculate cost including markup
-            }
-        {% endfor %}
+        $('#materialList input[type="checkbox"]:checked').each(function() {
+            const materialId = this.value;
+            const price = parseFloat($(`#price-${materialId}`).val()) || 0;
+            const markup = parseFloat($(`#markup-${materialId}`).val()) || 0;
+            totalCost += (price + (price * (markup / 100))) * quantity; // Calculate cost including markup
+        });
 
-        document.getElementById('totalCost').innerText = totalCost.toFixed(2); // Update total cost display
+        $('#totalCost').text(totalCost.toFixed(2)); // Update total cost display
     }
 
     function loadMaterials() {
-        const selectedElements = [];
-        $('input[name="project_element"]:checked').each(function() {
-            selectedElements.push(this.value);
-        });
+        const selectedElements = $('input[name="project_element"]:checked').map(function() {
+            return this.value;
+        }).get();
 
         if (selectedElements.length > 0) {
             $.ajax({
@@ -93,8 +96,8 @@
                             <li class="mb-2">
                                 <input type="checkbox" id="id_material_${material.id}" name="materials" value="${material.id}" onchange="calculateTotalCost()">
                                 <strong>${material.name}</strong>
-                                - Price: <input type="number" step="0.01" id="price-${material.id}" name="material_price_${material.id}" value="${material.price}" onchange="calculateTotalCost()">
-                                - Markup: <input type="number" step="0.01" id="markup-${material.id}" name="material_markup_${material.id}" value="${material.markup}">%
+                                - Price: <input type="number" step="0.01" id="price-${material.id}" name="material_price_${material.id}" value="0.00" onchange="calculateTotalCost()">
+                                - Markup: <input type="number" step="0.01" id="markup-${material.id}" name="material_markup_${material.id}" value="0.00">%
                             </li>
                         `);
                     });
@@ -108,14 +111,50 @@
         }
     }
 
-    // Add event listeners to calculate total cost when quantity or materials change
-    document.getElementById('id_quantity').addEventListener('input', calculateTotalCost);
-    $('input[name="project_element"]').change(loadMaterials); // Trigger loading materials on project element change
+    $(document).ready(function() {
+        $('#approveButton').on('click', function() {
+            if (confirm("Are you sure you want to approve this request?")) {
+                // Submit the approval form
+                $.ajax({
+                    url: $('#approveForm').attr('action'),  // Get the action URL from the form
+                    method: 'POST',
+                    data: {
+                        'csrfmiddlewaretoken': '{{ csrf_token }}',  // Ensure CSRF token is included
+                    },
+                    success: function(response) {
+                        alert("Request has been approved successfully!");
+                        location.reload(); // Optionally reload the page or redirect
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Approval failed:", error);
+                        alert("Failed to approve the request. Please try again.");
+                    }
+                });
+            }
+        });
 
-    {% for material in materials_with_details %}
-        document.getElementById('id_material_{{ material.id }}').addEventListener('change', calculateTotalCost);
-        document.getElementById('price-{{ material.id }}').addEventListener('input', calculateTotalCost);
-        document.getElementById('markup-{{ material.id }}').addEventListener('input', calculateTotalCost);
-    {% endfor %}
+        $('#id_quantity').on('input', calculateTotalCost);
+        $('input[name="project_element"]').on('change', loadMaterials); // Trigger loading materials on project element change
+
+        // Handle form submission using AJAX
+        $('#editProjectForm').on('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            $.ajax({
+                url: $(this).attr('action'), // Use the form's action attribute
+                method: $(this).attr('method'), // Use the form's method attribute
+                data: $(this).serialize(), // Serialize the form data
+                success: function(response) {
+                    alert("Project updated successfully!");
+                    location.reload(); // Optionally reload or redirect
+                },
+                error: function(xhr, status, error) {
+                    console.error("Form submission failed:", error);
+                    alert("Failed to update the project. Please try again.");
+                }
+            });
+        });
+    });
 </script>
+
 {% endblock %}

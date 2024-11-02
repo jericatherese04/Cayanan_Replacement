@@ -17,5 +17,11 @@ urlpatterns = [
     path('delete_material/<int:pk>/', views.DeleteMaterialView.as_view(), name='delete_material'),
     path('edit_project/<int:project_id>/', views.edit_project, name='edit_project'),
     path('', views.homepage, name='homepage'),  # Home page URL
+    path('edit_project/<int:project_id>/', views.edit_project, name='edit_project'),
+    path('approve_project/<int:project_id>/', views.approve_project_request, name='approve_project'),
+    path('approve_quotation/<int:quote_id>/', views.approve_quotation, name='approve_quotation'),
+    path('decline_quotation/<int:quote_id>/', views.decline_quotation, name='decline_quotation'),
+    path('view-declined-projects/', views.declined_projects, name='view_declined_project'),
+    path('approved-quotations/', views.approved_quotations, name='view_approved_project'),
 
 ]

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Declined Projects{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center">Declined Quotations</h1>
+
+    {% if declined_quotes %}
+        <div class="row">
+            {% for quote in declined_quotes %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Project Elements:</h5>
+                            <ul>
+                                {% for element in quote.project_element.all %}
+                                    <li>{{ element.name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Quantity:</strong> {{ quote.quantity }}</p>
+                            <h6>Selected Materials:</h6>
+                            <ul>
+                                {% if quote.material.all %}
+                                    {% for material in quote.material.all %}
+                                        <li>
+                                            <strong>{{ material.name }}</strong>
+                                            - Price: {{ material.price|floatformat:2 }}
+                                            - Markup: {{ material.markup|floatformat:2 }}%
+                                        </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li>No materials selected.</li>
+                                {% endif %}
+                            </ul>
+                            <p><strong>Total Cost:</strong> <span class="total-cost">{{ quote.total_cost|floatformat:2 }}</span></p>
+                            <p><strong>Requested On:</strong> {{ quote.created_at|date:"Y-m-d H:i" }}</p>
+                            <p><strong>Status:</strong> {{ quote.status }}</p>
+                            <p><strong>Location:</strong> {{ quote.location }}</p>
+                            <p><strong>Square Area Filled:</strong> {{ quote.area_size }} sq. units</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-center">No declined quotations found.</p>
+    {% endif %}
+    
+    <div class="text-center mt-4">
+    </div>
+</div>
+{% endblock %}

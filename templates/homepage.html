@@ -33,7 +33,7 @@
         {% if user_quotes %}
             {% for quote in user_quotes %}
                 <div class="col-md-4 mb-3">
-                    <div class="card">
+                    <div class="card" id="quote-card-{{ quote.id }}">
                         <div class="card-header">
                             <h5 class="card-title">Project Elements:</h5>
                             <ul>
@@ -45,31 +45,43 @@
                         <div class="card-body">
                             <p><strong>Quantity:</strong> {{ quote.quantity }}</p>
                             <h6>Selected Materials:</h6>
-                                <ul>
-                                    {% if quote.material.all %}
+                            <ul>
+                                {% if quote.material.all %}
                                     {% for material in quote.material.all %}
-                                        <li class="mb-2">
+                                        <li class="mb-2 material-item" data-price="{{ material.price }}" data-markup="{{ material.markup }}">
                                             <strong>{{ material.name }}</strong>
                                             {% if quote.status != "Pending" %}
                                                 - Price: {{ material.price|floatformat:2 }}
                                                 - Markup: {{ material.markup|floatformat:2 }}%
-                                                - Cost: {{ material.material_cost|floatformat:2 }}
                                             {% endif %}
                                         </li>
                                     {% endfor %}
                                 {% else %}
                                     <li>No materials selected.</li>
                                 {% endif %}
+                            </ul>
 
-                                </ul>
-
-                            {% if quote.total_cost %}
-                                <p><strong>Total Cost:</strong> {{ quote.total_cost|floatformat:2 }}</p>
+                            {% if quote.status != "Pending" %}
+                                <p><strong>Total Cost:</strong> <span class="total-cost">{{ quote.total_cost|floatformat:2 }}</span></p>
                             {% endif %}
                             <p><strong>Requested On:</strong> {{ quote.created_at|date:"Y-m-d H:i" }}</p>
-                            <p><strong>Status:</strong> {{ quote.status }}</p>
+                            <p><strong>Status:</strong> <span class="status-text">{{ quote.status }}</span></p>
                             <p><strong>Location:</strong> {{ quote.location }}</p>
                             <p><strong>Square Area Filled:</strong> {{ quote.area_size }} sq. units</p>
+
+                            {% if quote.status == "Approved by Admin" %}
+                                <div class="text-center mt-3">
+                                    <form id="approveForm-{{ quote.id }}" action="{% url 'approve_quotation' quote.id %}" method="POST" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="button" class="btn btn-success approve-button" data-quote-id="{{ quote.id }}">Approve</button>
+                                    </form>
+                                    <form id="declineForm-{{ quote.id }}" action="{% url 'decline_quotation' quote.id %}" method="POST" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="button" class="btn btn-danger decline-button" data-quote-id="{{ quote.id }}">Decline</button>
+                                    </form>
+                                </div>
+                            {% endif %}
+
                             <div class="text-center mt-2">
                                 <a href="{% url 'delete_quotation' quote.id %}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this quotation request?');">Delete Request</a>
                             </div>
@@ -86,5 +98,87 @@
         <a href="{% url 'quotation_request' %}" class="btn btn-primary">Request Quotation</a>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const quotes = document.querySelectorAll('.card-body'); // Select all card bodies to iterate over
+
+        quotes.forEach(quote => {
+            const materialItems = quote.querySelectorAll('.material-item'); // Get all material items in the current quote
+            let totalCost = 0;
+
+            materialItems.forEach(item => {
+                const price = parseFloat(item.getAttribute('data-price')); // Get the price from the data attribute
+                const markup = parseFloat(item.getAttribute('data-markup')); // Get the markup from the data attribute
+
+                if (!isNaN(price) && !isNaN(markup)) {
+                    const markupValue = price * (markup / 100); // Calculate markup value
+                    const cost = price + markupValue; // Calculate total cost per material
+                    totalCost += cost; // Add to total cost
+                }
+            });
+
+            // Update the total cost in the template
+            const totalCostElement = quote.querySelector('.total-cost');
+            if (totalCostElement) {
+                totalCostElement.textContent = totalCost.toFixed(2); // Format total cost to 2 decimal places
+            }
+        });
+    });
+
+    // Add event listener to approve buttons
+    document.querySelectorAll('.approve-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const quoteId = this.getAttribute('data-quote-id');
+            const form = document.getElementById(`approveForm-${quoteId}`);
+
+            $.ajax({
+                url: form.action,
+                method: 'POST',
+                data: {
+                    'csrfmiddlewaretoken': '{{ csrf_token }}',  // Ensure CSRF token is included
+                },
+                success: function(response) {
+                    alert("Request has been approved successfully!");
+                    location.reload(); // Optionally reload the page or redirect
+                },
+                error: function(xhr, status, error) {
+                    console.error("Approval failed:", error);
+                    alert("Failed to approve the request. Please try again.");
+                }
+            });
+        });
+    });
+
+    // Add event listener to decline buttons
+document.querySelectorAll('.decline-button').forEach(button => {
+    button.addEventListener('click', function() {
+        const quoteId = this.getAttribute('data-quote-id');
+        const form = document.getElementById(`declineForm-${quoteId}`);
+        const card = document.getElementById(`quote-card-${quoteId}`);
+        const statusText = card.querySelector('.status-text');
+
+        $.ajax({
+            url: form.action,
+            method: 'POST',
+            data: {
+                'csrfmiddlewaretoken': '{{ csrf_token }}',  // Ensure CSRF token is included
+            },
+            success: function(response) {
+                if (response.success) {
+                    statusText.textContent = "Declined by User"; // Update the status text
+                    alert(response.message); // Show success message
+                } else {
+                    alert(response.message); // Show error message
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Decline failed:", error);
+                alert("Failed to decline the request. Please try again.");
+            }
+        });
+    });
+});
+</script>
 
 {% endblock %}

@@ -40,12 +40,12 @@
                             {% if user.is_superuser %}
                                 <h5 class="sidebar-heading">Admin</h5>
                                 <li class="nav-item">
-                                    <a class="nav-link" href="{% url 'homepage' %}">
+                                    <a class="nav-link" href="{% url 'view_approved_project' %}">
                                         Approved Projects
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link" href="{% url 'homepage' %}">
+                                    <a class="nav-link" href="{% url 'view_declined_project' %}">
                                         Declined Projects
                                     </a>
                                 </li>
