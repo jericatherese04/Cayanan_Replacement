@@ -4,7 +4,35 @@ from .models import ProjectElement, Material, QuotationRequest
 from .forms import QuotationRequestForm
 from django.contrib.auth.decorators import login_required
 import logging
+from .forms import ProjectElementForm, MaterialForm
+
 logger = logging.getLogger(__name__)
+@login_required
+def add_project_element(request):
+    if request.method == 'POST':
+        form = ProjectElementForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('all_project_materials_and_elements')  # Redirect after successful submission
+    else:
+        form = ProjectElementForm()
+    return render(request, 'add_project_element.html', {'form': form})
+
+@login_required
+def add_material(request):
+    if request.method == 'POST':
+        form = MaterialForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('all_project_materials_and_elements')  # Redirect after successful submission
+    else:
+        form = MaterialForm()
+    return render(request, 'add_material.html', {'form': form})
+@login_required
+def all_project_materials_and_elements(request):
+    # Prefetch related materials for each project element
+    elements = ProjectElement.objects.prefetch_related('materials').all()
+    return render(request, 'all_project_materials_and_elements.html', {'elements': elements})
 
 
 @login_required

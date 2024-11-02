@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}All Project Materials and Elements{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>All Project Materials and Elements</h1>
+
+    {% for element in elements %}
+        <h2>{{ element.name }}</h2>
+        <ul>
+            {% for material in element.materials.all %}
+                <li>{{ material.name }}</li>
+            {% empty %}
+                <li>No materials found for this element.</li>
+            {% endfor %}
+        </ul>
+    {% empty %}
+        <p>No project elements found.</p>
+    {% endfor %}
+</div>
+{% endblock %}

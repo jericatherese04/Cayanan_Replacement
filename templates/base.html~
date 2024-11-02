@@ -69,17 +69,7 @@
                                         All Project Materials and Elements
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{% url 'add_project_element' %}">
-                                        Add Project Element
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{% url 'add_material' %}">
-                                        Add Material
-                                    </a>
-                                </li>
-
+                                
 
                             {% endif %}
                             <li class="nav-item">
