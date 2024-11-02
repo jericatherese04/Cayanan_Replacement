@@ -1,0 +1,60 @@
+<!-- templates/quotation_request.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Request Quotation</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+    <h1>Request a Project Quotation</h1>
+    <form method="post">
+        {% csrf_token %}
+        <label for="element">Element:</label><br>
+
+        <!-- Display radio buttons for each ProjectElement -->
+        {% for element in project_elements %}
+            <input type="radio" id="element_{{ element.id }}" name="element" value="{{ element.id }}">
+            <label for="element_{{ element.id }}">{{ element.name }}</label><br>
+        {% endfor %}
+
+        <!-- Container for materials, initially hidden -->
+        <div id="materials-container" style="display:none;">
+            <h2>Materials:</h2>
+            <div id="materials"></div>
+        </div>
+
+        <button type="submit">Submit Request</button>
+    </form>
+
+    <script>
+        $(document).ready(function() {
+            $('input[name="element"]').change(function() {
+                var elementId = $(this).val();
+                $.ajax({
+                    url: '{% url "load_materials" %}',
+                    data: {
+                        'element_id': elementId
+                    },
+                    success: function(data) {
+                        $('#materials').empty(); // Clear previous materials
+                        if (data.length > 0) {
+                            data.forEach(function(material) {
+                                $('#materials').append(
+                                    `<label><input type="radio" name="material" value="${material.id}"> ${material.name}</label><br>`
+                                );
+                            });
+                            $('#materials-container').show(); // Show materials section
+                        } else {
+                            $('#materials-container').hide(); // Hide if no materials
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX error:", error);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
