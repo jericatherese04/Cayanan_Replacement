@@ -4,8 +4,8 @@ from . import views
 
 urlpatterns = [
     path('request-quotation/', views.quotation_request, name='quotation_request'),
-    path('load-materials/', views.load_materials, name='load_materials'),
-    path('quotation/success/', views.quotation_success, name='quotation_success'),
+    path('load-materials/', views.load_materials, name='load_materials'),  # For AJAX material loading
+    path('quotation/success/', views.quotation_success, name='quotation_success'),  # Success page for quotation submission
     path('my-quotes/', views.list_of_my_quotes, name='homepage'),
     path('materials-and-elements/', views.all_project_materials_and_elements, name='all_project_materials_and_elements'),
     path('add-element/', views.add_project_element, name='add_project_element'),
@@ -17,7 +17,6 @@ urlpatterns = [
     path('delete_material/<int:pk>/', views.DeleteMaterialView.as_view(), name='delete_material'),
     path('edit_project/<int:project_id>/', views.edit_project, name='edit_project'),
     path('', views.homepage, name='homepage'),  # Home page URL
-    path('edit_project/<int:project_id>/', views.edit_project, name='edit_project'),
     path('approve_project/<int:project_id>/', views.approve_project_request, name='approve_project'),
     path('approve_quotation/<int:quote_id>/', views.approve_quotation, name='approve_quotation'),
     path('decline_quotation/<int:quote_id>/', views.decline_quotation, name='decline_quotation'),
@@ -25,6 +24,6 @@ urlpatterns = [
     path('approved-quotations/', views.approved_quotations, name='view_approved_project'),
     path('complete-quotation/<int:quotation_id>/', views.complete_quotation, name='complete_quotation'),
     path('completed-projects/', views.view_complete_projects, name='view_complete_project'),
-    # New URL for completed projects
-
+    path('admin/request/', views.admin_request_view, name='admin_request'),  # URL for admin request view
+    path('submit/project/request/', views.submit_project_request, name='submit_project_request'),
 ]

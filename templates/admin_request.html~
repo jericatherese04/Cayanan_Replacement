@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Submit Project Request{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Submit Project Request</h1>
+    <form method="POST" id="submitProjectRequestForm" action="{% url 'submit_project_request' %}">
+        {% csrf_token %}
+
+        <!-- Project Elements Selection -->
+        <div>
+            <h3>Select Project Elements:</h3>
+            {% for project_element in project_elements %}
+                <label>
+                    <input type="checkbox" name="project_element" value="{{ project_element.id }}">
+                    {{ project_element.name }}
+                </label><br>
+            {% endfor %}
+        </div>
+
+        <!-- Materials Section (Initially Hidden) -->
+        <div id="materials-container" style="display:none;">
+            <h3>Materials:</h3>
+            <div id="materials"></div>  <!-- Dynamically populated materials go here -->
+        </div>
+
+        <!-- Quantity and Other Fields -->
+        <div>
+            <label for="id_quantity">Quantity:</label>
+            <input type="number" name="quantity" id="id_quantity" min="1" value="1" readonly required>
+        </div>
+
+        <div>
+            <label for="area_size">Area Size (in sq. meters):</label>
+            <input type="text" name="area_size" id="area_size" placeholder="Enter area size" required>
+        </div>
+
+        <div>
+            <label for="location">Location:</label>
+            <input type="text" name="location" id="location" placeholder="Enter location" required>
+        </div>
+
+        <button type="submit">Submit Request</button>
+    </form>
+
+    {% if errors %}
+        <div class="error-list">
+            <h3>There were some errors:</h3>
+            <ul>
+                {% for field, messages in errors.items %}
+                    {% for message in messages %}
+                        <li>{{ field }}: {{ message }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</div>
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Function to load materials for selected elements
+        $('input[name="project_element"]').change(function() {
+            $('#materials').empty();  // Clear previous materials
+            var selectedElements = $('input[name="project_element"]:checked');
+
+            if (selectedElements.length > 0) {
+                $('#materials-container').show();  // Show materials container
+
+                // Fetch materials for each selected project element
+                selectedElements.each(function() {
+                    var elementId = $(this).val();
+                    $.ajax({
+                        url: '{% url "load_materials" %}',
+                        data: {
+                            'element_id': elementId
+                        },
+                        dataType: 'json',
+                        success: function(data) {
+                            console.log("Materials loaded for element " + elementId + ":", data);
+                            if (data.length > 0) {
+                                data.forEach(function(material) {
+                                    $('#materials').append(
+                                        `<label>
+                                            <input type="checkbox" name="materials" value="${material.id}" class="material-checkbox">
+                                            ${material.name} - Price: ${material.price} - Markup: ${material.markup}%
+                                        </label><br>`
+                                    );
+                                });
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("AJAX error:", error);
+                            alert("Error loading materials. Please try again.");
+                        }
+                    });
+                });
+            } else {
+                $('#materials-container').hide();  // Hide materials container if no project element selected
+            }
+        });
+
+        // Form validation before submission
+        $('#submitProjectRequestForm').on('submit', function(event) {
+            var areaSize = $('#area_size').val().trim();
+            var location = $('#location').val().trim();
+            var selectedElements = $('input[name="project_element"]:checked').length;
+            var selectedMaterials = $('input[name="materials"]:checked').length;
+
+            if (areaSize === "" || location === "" || selectedElements === 0 || selectedMaterials === 0) {
+                event.preventDefault();  // Prevent form submission
+                alert("Please fill in all required fields, including Area Size, Location, and select at least one Project Element and one Material.");
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

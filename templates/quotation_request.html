@@ -23,7 +23,7 @@
 
     <div>
         <label for="quantity">Quantity:</label>
-        <input type="number" name="quantity" id="quantity" min="1" value="1" readonly required>
+        <input type="number" name="quantity" id="quantity" min="1" value="1" {% if not request.user.is_superuser %}readonly{% endif %} required>
     </div>
 
     <div>
@@ -35,6 +35,18 @@
         <label for="location">Location:</label>
         <input type="text" name="location" id="location" placeholder="Enter location" required>
     </div>
+
+    {% if request.user.is_superuser %}
+    <div>
+        <label for="user_select">Select User to Send Request:</label>
+        <select id="user_select" name="user_id" required>
+            <option value="" disabled selected>Select a user</option>
+            {% for user in users %}
+                <option value="{{ user.id }}">{{ user.username }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
 
     <button type="submit">Submit Request</button>
 </form>

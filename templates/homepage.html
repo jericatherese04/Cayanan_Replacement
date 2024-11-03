@@ -12,7 +12,6 @@
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
 </style>
-
 <div class="container text-center">
     <h1>My Requested Quotations</h1>
     {% if user.is_authenticated %}
@@ -65,9 +64,9 @@
                                 <p><strong>Total Cost:</strong> <span class="total-cost">{{ quote.total_cost|floatformat:2 }}</span></p>
                             {% endif %}
                             <p><strong>Requested On:</strong> {{ quote.created_at|date:"Y-m-d H:i" }}</p>
-                            <p><strong>Updated On:</strong> {{ quote.updated_at|date:"Y-m-d H:i" }}</p> <!-- New field -->
-                            <p><strong>Start Date:</strong> {{ quote.start_date|date:"Y-m-d" }}</p> <!-- New field -->
-                            <p><strong>End Date:</strong> {{ quote.end_date|date:"Y-m-d" }}</p> <!-- New field -->
+                            <p><strong>Updated On:</strong> {{ quote.updated_at|date:"Y-m-d H:i" }}</p>
+                            <p><strong>Start Date:</strong> {{ quote.start_date|date:"Y-m-d" }}</p>
+                            <p><strong>End Date:</strong> {{ quote.end_date|date:"Y-m-d" }}</p>
                             <p><strong>Status:</strong> <span class="status-text">{{ quote.status }}</span></p>
                             <p><strong>Location:</strong> {{ quote.location }}</p>
                             <p><strong>Square Area Filled:</strong> {{ quote.area_size }} sq. units</p>
@@ -86,7 +85,6 @@
                             {% endif %}
 
                             <div class="text-center mt-2">
-                                <a href="{% url 'delete_quotation' quote.id %}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this quotation request?');">Delete Request</a>
                             </div>
                         </div>
                     </div>
@@ -96,12 +94,21 @@
             <p>You have not requested any quotations yet.</p>
         {% endif %}
     </div>
-    <p class="card-text text-center mt-3">Click the button below to request a new quotation for your project.</p>
-    <div class="text-center">
-        <a href="{% url 'quotation_request' %}" class="btn btn-primary">Request Quotation</a>
+
+    <p class="card-text text-center mt-3">
+        {% if user.is_superuser %}
+            Click the button below to request a new quotation as an admin.
+            <div class="text-center">
+                <a href="{% url 'quotation_request' %}" class="btn btn-primary">Request as Admin</a>
+            </div>
+        {% else %}
+            Click the button below to request a new quotation for your project.
+            <div class="text-center">
+                <a href="{% url 'quotation_request' %}" class="btn btn-primary">Request Quotation</a>
+            </div>
+        {% endif %}
     </div>
 </div>
-
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const quotes = document.querySelectorAll('.card-body'); // Select all card bodies to iterate over

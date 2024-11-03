@@ -1,10 +1,139 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Submit Project Request{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Submit Project Request</h1>
+    <form method="POST" id="submitProjectRequestForm" action="{% url 'submit_project_request' %}">
+        {% csrf_token %}
+
+        <!-- Project Elements Dropdown -->
+        <div>
+            <h3>Select Project Element</h3>
+            {{ form.project_element }}
+        </div>
+
+        <!-- Materials Section (Initially Hidden) -->
+        <div id="materials-section" style="display: none;">
+            <h3>Select Materials</h3>
+            <ul id="materialList" class="list-unstyled">
+                {% for material in materials_with_details %}
+                    <li class="material-item mb-2" data-element="{{ material.project_element.id }}" style="display: none;">
+                        <input type="checkbox" id="id_material_{{ material.id }}" name="materials" value="{{ material.id }}"
+                               onchange="calculateTotalCost()">
+                        <strong>{{ material.name }}</strong>
+                        - Price: <input type="number" step="0.01" id="price-{{ material.id }}" name="material_price_{{ material.id }}"
+                                        value="{{ material.price }}" onchange="calculateTotalCost()" required>
+                        - Markup: <input type="number" step="0.01" id="markup-{{ material.id }}" name="material_markup_{{ material.id }}"
+                                         value="{{ material.markup }}" onchange="calculateTotalCost()">%
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Quantity and Other Fields -->
+        <div>
+            <label for="id_quantity">Quantity:</label>
+            {{ form.quantity }}
+        </div>
+
+        <div>
+            <label for="id_area_size">Area Size:</label>
+            {{ form.area_size }}
+        </div>
+
+        <div>
+            <label for="id_location">Location:</label>
+            {{ form.location }}
+        </div>
+
+        <div>
+            <label for="user_select">Select User to Send Request:</label>
+            <select id="user_select" name="user_id" required>
+                <option value="" disabled selected>Select a user</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <h3>Total Cost: <span id="totalCost">0.00</span></h3>
+        <button type="submit" id="submitRequestBtn" class="btn btn-primary" disabled>Submit Request</button>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    function calculateTotalCost() {
+        let totalCost = 0;
+        let quantity = parseFloat($('#id_quantity').val()) || 1; // Default to 1 if quantity is empty
+        let allPricesEntered = true;
+
+        // Calculate total cost based on selected materials
+        $('#materialList input[type="checkbox"]:checked').each(function() {
+            const materialId = this.value;
+            const price = parseFloat($(`#price-${materialId}`).val()) || 0;
+            const markup = parseFloat($(`#markup-${materialId}`).val()) || 0;
+
+            if (price === 0) {
+                allPricesEntered = false;
+            }
+
+            totalCost += (price + (price * (markup / 100))) * quantity; // Calculate cost including markup
+        });
+
+        // Update total cost display
+        $('#totalCost').text(totalCost.toFixed(2));
+
+        // Enable submit button only if prices are filled for all selected materials
+        $('#submitRequestBtn').prop('disabled', !allPricesEntered);
+    }
+
+    // AJAX call to load materials based on selected project element
+    $(document).ready(function() {
+        $('#id_project_element').on('change', function() {
+            const elementId = $(this).val();
+            if (elementId) {
+                $('#materials-section').show(); // Show materials section
+
+                // AJAX call to get materials
+                $.ajax({
+                    url: "{% url 'load_materials' %}",  // URL matches the 'load_materials' view
+                    data: {
+                        'element_id': elementId
+                    },
+                    success: function(data) {
+                        $('#materialList').empty();  // Clear the current material list
+
+                        // Populate material list with response data
+                        data.forEach(function(material) {
+                            $('#materialList').append(`
+                                <li class="material-item mb-2">
+                                    <input type="checkbox" id="id_material_${material.id}" name="materials" value="${material.id}"
+                                           onchange="calculateTotalCost()">
+                                    <strong>${material.name}</strong>
+                                    - Price: <input type="number" step="0.01" id="price-${material.id}" name="material_price_${material.id}"
+                                                    value="${material.price}" onchange="calculateTotalCost()" required>
+                                    - Markup: <input type="number" step="0.01" id="markup-${material.id}" name="material_markup_${material.id}"
+                                                     value="${material.markup}" onchange="calculateTotalCost()">%
+                                </li>
+                            `);
+                        });
+                    },
+                    error: function() {
+                        console.error("An error occurred while loading materials.");
+                    }
+                });
+            } else {
+                $('#materials-section').hide();
+            }
+        });
+    });
+</script>
+
+
+{% endblock %}

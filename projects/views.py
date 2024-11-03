@@ -12,6 +12,7 @@ from django.views import View
 from django.http import HttpResponseForbidden
 import json
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 
 @login_required
@@ -308,15 +309,22 @@ def quotation_request(request):
         quantity = request.POST.get('quantity')
         area_size = request.POST.get('area_size')
         location = request.POST.get('location')
-        user = request.user  # Assuming the user is logged in
+        user_id = request.POST.get('user_id')  # Get the selected user ID from the form
 
         # Create the QuotationRequest instance
         quotation_request = QuotationRequest.objects.create(
-            user=user,
+            user=request.user,  # This is the logged-in user
             quantity=quantity,
             area_size=area_size,
             location=location
         )
+
+        # If the user is a superuser and a user_id is provided, assign the selected user
+        if request.user.is_superuser and user_id:
+            selected_user = User.objects.get(id=user_id)
+            quotation_request.user = selected_user  # Assign the selected user
+            quotation_request.save()  # Save the instance again to update the user
+
         # Add selected project elements and materials
         quotation_request.project_element.add(*selected_elements)
         if selected_materials:
@@ -324,10 +332,14 @@ def quotation_request(request):
 
         return redirect('quotation_success')  # Redirect to a success page or appropriate response
 
-    # Fetch project elements for rendering the form
+    # Fetch project elements and users for rendering the form
     project_elements = ProjectElement.objects.all()
-    return render(request, 'quotation_request.html', {'project_elements': project_elements})
+    users = User.objects.all()  # Fetch all users
 
+    return render(request, 'quotation_request.html', {
+        'project_elements': project_elements,
+        'users': users,  # Pass users to the template
+    })
 def load_materials(request):
     element_id = request.GET.get('element_id')
     materials = Material.objects.filter(project_element_id=element_id)
@@ -347,4 +359,63 @@ def homepage(request):
 
     return render(request, 'homepage.html', {
         'user_quotes': user_quotes
+    })
+
+
+@login_required
+def admin_request_view(request):
+    if request.method == 'POST':
+        form = QuotationRequestForm(request.POST)
+        if form.is_valid():
+            # Save the form data to create a new QuotationRequest instance
+            quotation_request = form.save(commit=False)  # Create the instance without saving to DB yet
+            user_id = request.POST.get('user_id')  # Get the user ID to whom the request will be sent
+            user = get_object_or_404(User, id=user_id)
+            quotation_request.user = user  # Set the user
+            quotation_request.status = 'Pending'  # Set status to Pending
+            quotation_request.save()  # Now save the instance
+
+            return redirect('quotation_success')  # Redirect to a success page
+    else:
+        form = QuotationRequestForm()  # Create an empty form instance
+
+    return render(request, 'admin_request.html', {
+        'form': form,
+        'users': User.objects.all(),  # Fetch all users for the dropdown
+    })
+
+
+@login_required
+def submit_project_request(request):
+    # Handle AJAX request to load materials for a selected project element
+    if request.is_ajax() and request.method == 'GET':
+        element_id = request.GET.get('element_id')
+        materials = Material.objects.filter(project_element_id=element_id)
+        material_data = list(materials.values('id', 'name', 'price', 'markup'))
+        return JsonResponse(material_data, safe=False)
+
+    # Standard form rendering for initial page load
+    form = QuotationRequestForm()
+    project_elements = ProjectElement.objects.all()
+    users = User.objects.all()
+
+    if request.method == 'POST':
+        form = QuotationRequestForm(request.POST)
+        if form.is_valid():
+            quotation_request = form.save(commit=False)
+            quotation_request.user = request.user
+            quotation_request.save()
+
+            # Add selected materials to the quotation request
+            selected_materials = request.POST.getlist('materials')
+            for material_id in selected_materials:
+                material = Material.objects.get(id=material_id)
+                quotation_request.material.add(material)
+
+            return redirect('quotation_success')
+
+    return render(request, 'admin_request.html', {
+        'form': form,
+        'project_elements': project_elements,
+        'users': users,
     })
